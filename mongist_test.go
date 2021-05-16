@@ -51,9 +51,7 @@ func TestDatabases(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	db := client.Database(os.Getenv("MONGIST_DB"))
-	coleection := db.Collection(os.Getenv("MONGIST_COLLECTION"))
-	result := coleection.FindOne(aCtx(), bson.M{})
+	result := collection().FindOne(aCtx(), bson.M{})
 
 	var doc bson.M
 	err := result.Decode(&doc)
@@ -63,7 +61,47 @@ func TestQuery(t *testing.T) {
 	t.Log(doc)
 }
 
+func TestAgg(t *testing.T) {
+	matchStage := bson.D{{"$match", bson.D{}}}
+	groupStage := bson.D{{"$group", bson.D{{"_id", "$director"}, {"total", bson.D{{"$sum", 1}}}}}}
+	sortStage := bson.D{{"$sort", bson.M{"total": -1}}}
+
+	agg, err := collection().Aggregate(aCtx(), mongo.Pipeline{matchStage, groupStage, sortStage})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result []bson.M
+	if err = agg.All(aCtx(), &result); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(result)
+}
+
+func TestAggUnwind(t *testing.T) {
+	matchStage := bson.D{{"$match", bson.D{}}}
+	unwindStage := bson.D{{"$unwind", "$stars"}}
+	groupStage := bson.D{{"$group", bson.D{{"_id", "$stars"}, {"total", bson.D{{"$sum", 1}}}}}}
+	sortStage := bson.D{{"$sort", bson.M{"total": -1}}}
+
+	agg, err := collection().Aggregate(aCtx(), mongo.Pipeline{matchStage, unwindStage, groupStage, sortStage})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result []bson.M
+	if err = agg.All(aCtx(), &result); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(result)
+}
+
 func aCtx() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	return ctx
+}
+
+func collection() *mongo.Collection {
+	db := client.Database(os.Getenv("MONGIST_DB"))
+	return db.Collection(os.Getenv("MONGIST_COLLECTION"))
 }
