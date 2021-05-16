@@ -71,11 +71,26 @@ func TestAgg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var result []bson.M
-	if err = agg.All(aCtx(), &result); err != nil {
+	var resultRaw []bson.M
+	if err = agg.All(aCtx(), &resultRaw); err != nil {
 		t.Fatal(err)
 	}
-	t.Log(result)
+
+	mongist := &Mongist{
+		Collection: collection(),
+		Match:      bson.D{},
+		Group:      bson.D{{"_id", "$director"}, {"total", bson.D{{"$sum", 1}}}},
+		Sort:       bson.D{{"total", -1}},
+	}
+	resultMongist, err := mongist.Grouping()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(resultRaw)
+	t.Log(resultMongist)
+
+	checkResultSame(t, resultRaw, resultMongist)
 }
 
 func TestAggUnwind(t *testing.T) {
@@ -89,11 +104,27 @@ func TestAggUnwind(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var result []bson.M
-	if err = agg.All(aCtx(), &result); err != nil {
+	var resultRaw []bson.M
+	if err = agg.All(aCtx(), &resultRaw); err != nil {
 		t.Fatal(err)
 	}
-	t.Log(result)
+
+	mongist := &Mongist{
+		Collection: collection(),
+		Match:      bson.D{},
+		Unwinds:    []Unwind{Unwind{Path: "$stars"}},
+		Group:      bson.D{{"_id", "$stars"}, {"total", bson.D{{"$sum", 1}}}},
+		Sort:       bson.D{{"total", -1}},
+	}
+	resultMongist, err := mongist.Grouping()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(resultRaw)
+	t.Log(resultMongist)
+
+	checkResultSame(t, resultRaw, resultMongist)
 }
 
 func aCtx() context.Context {
@@ -104,4 +135,17 @@ func aCtx() context.Context {
 func collection() *mongo.Collection {
 	db := client.Database(os.Getenv("MONGIST_DB"))
 	return db.Collection(os.Getenv("MONGIST_COLLECTION"))
+}
+
+func checkResultSame(t *testing.T, raw []bson.M, mg []bson.M) {
+	if len(raw) != len(mg) {
+		t.Fatal("length not match")
+	}
+
+	for i, r := range raw {
+		m := mg[i]
+		if m["id"] != r["id"] || m["total"] != r["total"] {
+			t.Fatal("count not match")
+		}
+	}
 }
