@@ -50,6 +50,19 @@ func TestDatabases(t *testing.T) {
 	t.Log(databases)
 }
 
+func TestQuery(t *testing.T) {
+	db := client.Database(os.Getenv("MONGIST_DB"))
+	coleection := db.Collection(os.Getenv("MONGIST_COLLECTION"))
+	result := coleection.FindOne(aCtx(), bson.M{})
+
+	var doc bson.M
+	err := result.Decode(&doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(doc)
+}
+
 func aCtx() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	return ctx
