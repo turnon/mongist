@@ -63,8 +63,8 @@ func TestQuery(t *testing.T) {
 
 func TestAgg(t *testing.T) {
 	matchStage := bson.D{{"$match", bson.D{}}}
-	groupStage := bson.D{{"$group", bson.D{{"_id", "$director"}, {"total", bson.D{{"$sum", 1}}}}}}
-	sortStage := bson.D{{"$sort", bson.M{"total": -1}}}
+	groupStage := bson.D{{"$group", bson.D{{"_id", "$director"}, {"count", bson.D{{"$sum", 1}}}}}}
+	sortStage := bson.D{{"$sort", bson.M{"count": -1}}}
 
 	agg, err := collection().Aggregate(aCtx(), mongo.Pipeline{matchStage, groupStage, sortStage})
 	if err != nil {
@@ -76,11 +76,11 @@ func TestAgg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mongist := &Mongist{
+	mongist := &Stat{
 		Collection: collection(),
 		Match:      bson.D{},
-		Group:      bson.D{{"_id", "$director"}, {"total", bson.D{{"$sum", 1}}}},
-		Sort:       bson.D{{"total", -1}},
+		Group:      Group{Path: "$director", Count: true},
+		Sort:       bson.D{{"count", -1}},
 	}
 	resultMongist, err := mongist.Grouping()
 	if err != nil {
@@ -96,8 +96,8 @@ func TestAgg(t *testing.T) {
 func TestAggUnwind(t *testing.T) {
 	matchStage := bson.D{{"$match", bson.D{}}}
 	unwindStage := bson.D{{"$unwind", "$stars"}}
-	groupStage := bson.D{{"$group", bson.D{{"_id", "$stars"}, {"total", bson.D{{"$sum", 1}}}}}}
-	sortStage := bson.D{{"$sort", bson.M{"total": -1}}}
+	groupStage := bson.D{{"$group", bson.D{{"_id", "$stars"}, {"count", bson.D{{"$sum", 1}}}}}}
+	sortStage := bson.D{{"$sort", bson.M{"count": -1}}}
 
 	agg, err := collection().Aggregate(aCtx(), mongo.Pipeline{matchStage, unwindStage, groupStage, sortStage})
 	if err != nil {
@@ -109,12 +109,12 @@ func TestAggUnwind(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mongist := &Mongist{
+	mongist := &Stat{
 		Collection: collection(),
 		Match:      bson.D{},
 		Unwinds:    []Unwind{Unwind{Path: "$stars"}},
-		Group:      bson.D{{"_id", "$stars"}, {"total", bson.D{{"$sum", 1}}}},
-		Sort:       bson.D{{"total", -1}},
+		Group:      Group{Path: "$stars", Count: true},
+		Sort:       bson.D{{"count", -1}},
 	}
 	resultMongist, err := mongist.Grouping()
 	if err != nil {
@@ -144,7 +144,7 @@ func checkResultSame(t *testing.T, raw []bson.M, mg []bson.M) {
 
 	for i, r := range raw {
 		m := mg[i]
-		if m["id"] != r["id"] || m["total"] != r["total"] {
+		if m["id"] != r["id"] || m["count"] != r["count"] {
 			t.Fatal("count not match")
 		}
 	}

@@ -8,13 +8,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Mongist struct {
+type Stat struct {
 	Collection *mongo.Collection
 	Ctx        context.Context
 	Match      bson.D
 	Unwinds    []Unwind
-	Group      bson.D
-	Sort       bson.D
+	Group
+	Sort bson.D
 }
 
 type Unwind struct {
@@ -22,7 +22,20 @@ type Unwind struct {
 	PreserveNullAndEmptyArrays bool
 }
 
-func (m *Mongist) Grouping() ([]bson.M, error) {
+type Group struct {
+	Path  string
+	Count bool
+}
+
+func (g *Group) generate() bson.D {
+	group := bson.M{"_id": g.Path}
+	if g.Count {
+		group["count"] = bson.D{{"$sum", 1}}
+	}
+	return bson.D{{"$group", group}}
+}
+
+func (m *Stat) Grouping() ([]bson.M, error) {
 	if m.Collection == nil {
 		return nil, errors.New("No collection given !")
 	}
@@ -47,7 +60,7 @@ func (m *Mongist) Grouping() ([]bson.M, error) {
 	return result, nil
 }
 
-func (m *Mongist) getPipeline() mongo.Pipeline {
+func (m *Stat) getPipeline() mongo.Pipeline {
 	pipeline := make(mongo.Pipeline, 0, 0)
 
 	if m.Match != nil {
@@ -61,7 +74,7 @@ func (m *Mongist) getPipeline() mongo.Pipeline {
 		}
 	}
 
-	pipeline = append(pipeline, bson.D{{"$group", m.Group}})
+	pipeline = append(pipeline, m.Group.generate())
 
 	if m.Match != nil {
 		matchStage := bson.D{{"$match", m.Match}}
