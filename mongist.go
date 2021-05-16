@@ -26,12 +26,30 @@ func (m *Mongist) Grouping() ([]bson.M, error) {
 	if m.Collection == nil {
 		return nil, errors.New("No collection given !")
 	}
+
 	ctx := m.Ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	pipeline := make(mongo.Pipeline, 0, 3)
+	pipeline := m.getPipeline()
+
+	agg, err := m.Collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []bson.M
+	if err = agg.All(ctx, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (m *Mongist) getPipeline() mongo.Pipeline {
+	pipeline := make(mongo.Pipeline, 0, 0)
+
 	if m.Match != nil {
 		matchStage := bson.D{{"$match", m.Match}}
 		pipeline = append(pipeline, matchStage)
@@ -54,15 +72,5 @@ func (m *Mongist) Grouping() ([]bson.M, error) {
 		pipeline = append(pipeline, bson.D{{"$sort", m.Sort}})
 	}
 
-	agg, err := m.Collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []bson.M
-	if err = agg.All(ctx, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return pipeline
 }
