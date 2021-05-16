@@ -8,13 +8,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const Count = "count"
+
 type Stat struct {
 	Collection *mongo.Collection
 	Ctx        context.Context
 	Match      bson.D
 	Unwinds    []Unwind
 	Group
-	Sort bson.D
+	Sort
 }
 
 type Unwind struct {
@@ -27,10 +29,12 @@ type Group struct {
 	Count bool
 }
 
+type Sort bson.D
+
 func (g *Group) generate() bson.D {
 	group := bson.M{"_id": g.Path}
 	if g.Count {
-		group["count"] = bson.D{{"$sum", 1}}
+		group[Count] = bson.D{{"$sum", 1}}
 	}
 	return bson.D{{"$group", group}}
 }

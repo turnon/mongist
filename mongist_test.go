@@ -80,7 +80,7 @@ func TestAgg(t *testing.T) {
 		Collection: collection(),
 		Match:      bson.D{},
 		Group:      Group{Path: "$director", Count: true},
-		Sort:       bson.D{{"count", -1}},
+		Sort:       Sort{{Count, -1}},
 	}
 	resultMongist, err := mongist.Grouping()
 	if err != nil {
@@ -114,7 +114,7 @@ func TestAggUnwind(t *testing.T) {
 		Match:      bson.D{},
 		Unwinds:    []Unwind{Unwind{Path: "$stars"}},
 		Group:      Group{Path: "$stars", Count: true},
-		Sort:       bson.D{{"count", -1}},
+		Sort:       Sort{{Count, -1}},
 	}
 	resultMongist, err := mongist.Grouping()
 	if err != nil {
