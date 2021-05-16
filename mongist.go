@@ -14,10 +14,14 @@ type Stat struct {
 	Collection *mongo.Collection
 	Ctx        context.Context
 	Match      bson.D
-	Unwinds    []Unwind
+
+	Unwind
+	Unwinds
 	Group
 	Sort
 }
+
+type Unwinds []Unwind
 
 type Unwind struct {
 	Path                       string
@@ -37,6 +41,10 @@ func (g *Group) generate() bson.D {
 		group[Count] = bson.D{{"$sum", 1}}
 	}
 	return bson.D{{"$group", group}}
+}
+
+func (uw *Unwind) generate() bson.D {
+	return bson.D{{"$unwind", bson.M{"path": uw.Path, "preserveNullAndEmptyArrays": uw.PreserveNullAndEmptyArrays}}}
 }
 
 func (m *Stat) Grouping() ([]bson.M, error) {
@@ -72,18 +80,17 @@ func (m *Stat) getPipeline() mongo.Pipeline {
 		pipeline = append(pipeline, matchStage)
 	}
 
+	if m.Unwind.Path != "" {
+		pipeline = append(pipeline, m.Unwind.generate())
+	}
+
 	if m.Unwinds != nil {
 		for _, unwind := range m.Unwinds {
-			pipeline = append(pipeline, bson.D{{"$unwind", bson.M{"path": unwind.Path, "preserveNullAndEmptyArrays": unwind.PreserveNullAndEmptyArrays}}})
+			pipeline = append(pipeline, unwind.generate())
 		}
 	}
 
 	pipeline = append(pipeline, m.Group.generate())
-
-	if m.Match != nil {
-		matchStage := bson.D{{"$match", m.Match}}
-		pipeline = append(pipeline, matchStage)
-	}
 
 	if m.Sort != nil {
 		pipeline = append(pipeline, bson.D{{"$sort", m.Sort}})

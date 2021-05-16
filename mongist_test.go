@@ -112,7 +112,7 @@ func TestAggUnwind(t *testing.T) {
 	mongist := &Stat{
 		Collection: collection(),
 		Match:      bson.D{},
-		Unwinds:    []Unwind{Unwind{Path: "$stars"}},
+		Unwind:     Unwind{Path: "$stars"},
 		Group:      Group{Path: "$stars", Count: true},
 		Sort:       Sort{{Count, -1}},
 	}
