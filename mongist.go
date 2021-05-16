@@ -1,0 +1,5 @@
+package mongist
+
+func Statistic() {
+
+}
